@@ -1,0 +1,24 @@
+{
+  "manifest": {
+    "apis": {
+      "custom": {
+        "endpoint": {
+          "sourceDir": "lambda",
+          "uri": "ask-custom-games-workshop-default"
+        },
+        "interfaces": [
+          {
+            "type": "ALEXA_PRESENTATION_APL"
+          }
+        ]
+      }
+    },
+    "publishingInformation": {
+      "locales": {
+        "es-ES": {
+          "name": "Sí mi Capitán"
+        }
+      }
+    }
+  }
+}

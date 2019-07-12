@@ -3,7 +3,6 @@
 // session persistence, api calls, and more.
 const Alexa = require('ask-sdk');
 const modules = require('./modules');
-var persistenceAdapter = getPersistenceAdapter();
 
 const LaunchRequestHandler = {
     canHandle(handlerInput) {
@@ -13,25 +12,19 @@ const LaunchRequestHandler = {
         const {attributesManager} = handlerInput;
         const sessionAttributes = attributesManager.getSessionAttributes();
         
-        let vueltas = sessionAttributes['vueltas'];
-        let speechText;
-        if(vueltas){
-            speechText = 'Hola otra vez! Eres muy valiente en continuar. ';
-        } else {
-            speechText = 'Bienvenido a sí mi capitán! ';
-            sessionAttributes['id'] = 1;
-            sessionAttributes['reputacion'] = 50;
-            sessionAttributes['tesoro'] = 50;
-            sessionAttributes['vueltas'] = 0;
-            
-        }
+        let speechText = 'Bienvenido a sí mi capitán! ';
+        sessionAttributes['id'] = 1;
+        sessionAttributes['reputacion'] = 50;
+        sessionAttributes['tesoro'] = 50;
+        sessionAttributes['vueltas'] = 0;
+
         const module = getModule(sessionAttributes['id']);
         speechText += module.question;
         
         return handlerInput.responseBuilder
             .speak(speechText)
             .reprompt(speechText)
-            .withStandardCard('Sí mi Capitán', module.question, module.image) // <--
+            .withStandardCard('Sí mi Capitán', module.question, module.image)
             .getResponse();
     }
 };
@@ -208,37 +201,6 @@ function calculateGameVariables(sessionAttributes, reputacionDif, tesoroDif) {
     console.log(sessionAttributes);
 }
 
-function getPersistenceAdapter() {
-    const {S3PersistenceAdapter} = require('ask-sdk-s3-persistence-adapter');
-        return new S3PersistenceAdapter({
-            bucketName: process.env.S3_PERSISTENCE_BUCKET
-        });
-}
-
-const LoadAttributesRequestInterceptor = {
-    async process(handlerInput) {
-        const {attributesManager, requestEnvelope} = handlerInput;
-        if(requestEnvelope.session['new']){ //is this a new session? this check is not enough if using auto-delegate
-            const persistentAttributes = await attributesManager.getPersistentAttributes() || {};
-            //copy persistent attribute to session attributes
-            attributesManager.setSessionAttributes(persistentAttributes);
-        }
-    }
-};
-
-const SaveAttributesResponseInterceptor = {
-    async process(handlerInput, response) {
-        if(!response) return; // avoid intercepting calls that have no outgoing response due to errors
-        const {attributesManager, requestEnvelope} = handlerInput;
-        const sessionAttributes = attributesManager.getSessionAttributes();
-        const shouldEndSession = (typeof response.shouldEndSession === "undefined" ? true : response.shouldEndSession); //is this a session end?
-        if(shouldEndSession || requestEnvelope.request.type === 'SessionEndedRequest') { // skill was stopped or timed out
-            attributesManager.setPersistentAttributes(sessionAttributes);
-            await attributesManager.savePersistentAttributes();
-        }
-    }
-};
-
 // This handler acts as the entry point for your skill, routing all request and response
 // payloads to the handlers above. Make sure any new handlers or interceptors you've
 // defined are included below. The order matters - they're processed top to bottom.
@@ -251,11 +213,6 @@ exports.handler = Alexa.SkillBuilders.custom()
         CancelAndStopIntentHandler,
         SessionEndedRequestHandler,
         IntentReflectorHandler) // make sure IntentReflectorHandler is last so it doesn't override your custom intent handlers
-    .addRequestInterceptors(
-        require('./aplcard').APLHomeCardRequestInterceptor,
-        LoadAttributesRequestInterceptor)
-    .addResponseInterceptors(SaveAttributesResponseInterceptor)
     .addErrorHandlers(
         ErrorHandler)
-    .withPersistenceAdapter(persistenceAdapter)
     .lambda();
